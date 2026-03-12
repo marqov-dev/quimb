@@ -1,0 +1,20 @@
+# GPU requirements for quimb benchmarks on SageMaker
+# Installed on ml.g5.12xlarge (4x A10G, CUDA 12.4)
+
+# Core
+quimb>=1.12.0
+cotengra>=0.7.0
+autoray>=0.7.0
+opt_einsum>=3.3.0
+
+# GPU backends
+cupy-cuda12x>=13.0.0
+cuquantum-python-cu12>=24.11.0
+
+# Optimization (for cotengra path finding)
+optuna>=3.0.0
+kahypar>=1.4
+
+# Benchmarking
+numpy>=1.26.0
+scipy>=1.12.0
