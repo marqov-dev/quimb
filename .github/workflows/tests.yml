@@ -32,11 +32,19 @@ jobs:
         with:
           script: |
             let files;
-            if (context.eventName === 'push' && !/^0+$/.test(context.payload.before)) {
+            if (context.eventName === 'push' && typeof context.ref === 'string'
+                && context.ref.startsWith('refs/heads/') && !context.payload.forced && !context.payload.deleted
+                && typeof context.payload.before === 'string' && /^[a-f0-9]{40}$/.test(context.payload.before)
+                && !/^0+$/.test(context.payload.before)) {
               const comparison = await github.rest.repos.compareCommits({
                 owner: context.repo.owner, repo: context.repo.repo,
                 base: context.payload.before, head: context.sha
               });
+              // A compare API diff is safe to classify only for a normal forward push.
+              if (comparison.data.status !== 'ahead') {
+                core.setOutput('code', 'true');
+                return;
+              }
               files = comparison.data.files;
               if (!Array.isArray(files) || !files.length || files.length >= 300) {
                 core.setOutput('code', 'true');
@@ -62,7 +70,7 @@ jobs:
               && (!file.previous_filename || docsOnly(file.previous_filename)))));
 
   run-tests:
-    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (needs.ci-scope.result != 'success' || needs.ci-scope.outputs.code == 'true')
+    if: always() && (github.event_name != 'pull_request' || github.event.pull_request.draft == false) && (needs.ci-scope.result != 'success' || needs.ci-scope.outputs.code != 'false')
     needs: ci-scope
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.flaky }}
@@ -120,7 +128,7 @@ jobs:
 
     steps:
     - name: Require successful change classification
-      if: needs.ci-scope.result != 'success'
+      if: needs.ci-scope.result != 'success' || needs.ci-scope.outputs.code != 'true'
       run: exit 1
     - uses: actions/checkout@v4
 
